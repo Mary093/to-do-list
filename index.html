@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Watchlist</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <nav class="navbar my-navbar px-3">
+        <button class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#sidebar">
+            <span class="material-icons">menu</span>
+        </button>
+        <span class="navbar-brand ms-3 fw-bold text-light">🎬 MyWatchlist</span>
+    </nav>
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebar">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title">Menù</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+        </div>
+        <div class="offcanvas-body">
+            <nav class="nav flex-column">
+                <a class="nav-link" href="#"><span class="material-icons me-2">explore</span>Esplora</a>
+                <a class="nav-link" href="#"><span class="material-icons me-2">bookmark</span>Le mie liste</a>
+                <a class="nav-link" href="#"><span class="material-icons me-2">settings</span>Impostazioni</a>
+            </nav>
+        </div>
+    </div>
+    <div class="container mt-4">
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>

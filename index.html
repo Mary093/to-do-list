@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Watchlist</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <nav class="navbar my-navbar px-3">
+        <button class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#sidebar">
+            <span class="material-icons">menu</span>
+        </button>
+        <span class="navbar-brand ms-3 fw-bold text-light">🎬 MyWatchlist</span>
+    </nav>
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebar">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title">Menù</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+        </div>
+        <div class="offcanvas-body">
+            <nav class="nav flex-column">
+                <a class="nav-link" id="explore-link" href="#"><span class="material-icons me-2">explore</span>Esplora</a>
+                <a class="nav-link" id="my-lists-link" href="#"><span class="material-icons me-2">bookmark</span>Le mie liste</a>
+                <a class="nav-link" href="#"><span class="material-icons me-2">settings</span>Impostazioni</a>
+            </nav>
+        </div>
+    </div>
+    <main class="container mt-4">
+    </main>
+
+    <template id="explore-template">
+        <header class="mb-4">
+            <h2 class="text-dark d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <span>Esplora Film</span>
+                <div class="d-flex align-items-center gap-2">
+                    <label for="viewedFilterExplore" class="form-label mb-0 me-1 text-dark">Filtro:</label>
+                    <select id="viewedFilterExplore" class="form-select form-select-sm w-auto">
+                        <option value="all" selected>Tutti</option>
+                        <option value="viewed">Visti</option>
+                        <option value="unviewed">Non visti</option>
+                    </select>
+                </div>
+            </h2>
+            <div class="d-flex gap-2">
+                <input type="text" id="searchInput" class="form-control search-input" placeholder="Cerca film..." />
+                <button class="btn btn-secondary" id="searchBtn">
+                    <span class="material-icons me-1">search</span> Cerca
+                </button>
+            </div>
+        </header>
+        <div>
+            <div id="searchResults" class="row mb-5"></div>
+            <h4 class="text-dark">🎬 Tutti i Film Disponibili</h4>
+            <div id="exploreList" class="row"></div>
+        </div>
+    </template>
+    
+    <template id="my-lists-template">
+        <header class="mb-4">
+            <h2 class="text-dark d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <span>Le mie Liste</span>
+                <div class="d-flex align-items-center gap-2">
+                    <label for="viewedFilterSaved" class="form-label mb-0 me-1 text-dark">Filtro:</label>
+                    <select id="viewedFilterSaved" class="form-select form-select-sm w-auto">
+                        <option value="all" selected>Tutti</option>
+                        <option value="viewed">Visti</option>
+                        <option value="unviewed">Non visti</option>
+                    </select>
+                </div>
+            </h2>
+        </header>
+        <div>
+            <div class="mb-4">
+                <h4 class="text-dark">➕ Aggiungi Nuovo Film</h4>
+                <div class="row">
+                    <div class="col-md-3">
+                        <input type="text" id="titolo" class="form-control mb-2" placeholder="Titolo" />
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" id="genere" class="form-control mb-2" placeholder="Genere" />
+                    </div>
+                    <div class="col-md-2">
+                        <input type="number" id="anno" class="form-control mb-2" placeholder="Anno" min="1900" max="2024" />
+                    </div>
+                    <div class="col-md-2">
+                        <input type="text" id="durata" class="form-control mb-2" placeholder="Durata" />
+                    </div>
+                    <div class="col-md-2">
+                        <button onclick="addFilmFromInput()" class="btn btn-primary mb-2 w-100">
+                            <span class="material-icons me-1">add</span> Aggiungi
+                        </button>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <textarea id="descrizione" class="form-control mb-2" placeholder="Descrizione del film" rows="2"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <h4 class="text-dark mb-0">️ Film Salvati (<span>0</span>)</h4>
+                <div class="btn-group" role="group" aria-label="Bulk actions">
+                    <button id="markAllViewedBtn" class="btn btn-outline-success btn-sm">
+                        <span class="material-icons me-1">done_all</span> Segna tutti
+                    </button>
+                    <button id="unmarkAllViewedBtn" class="btn btn-outline-secondary btn-sm">
+                        <span class="material-icons me-1">remove_red_eye</span> Deseleziona tutti
+                    </button>
+                    <button id="removeCompletedBtn" class="btn btn-outline-warning btn-sm">
+                        <span class="material-icons me-1">remove_done</span> Rimuovi visti
+                    </button>
+                    <button id="clearSavedBtn" class="btn btn-outline-danger btn-sm">
+                        <span class="material-icons me-1">clear_all</span> Svuota lista
+                    </button>
+                </div>
+            </div>
+            <div id="savedList" class="row"></div>
+        </div>
+    </template>
+    
+    <template id="film-card-template">
+        <div class="film-list-item d-flex">
+            <img class="film-poster" alt="">
+            <div class="film-info">
+                <div>
+                    <h5 class="film-title"></h5>
+                    <div class="film-details">
+                        <p class="mb-1"><strong>Genere:</strong> <span class="film-genre"></span></p>
+                        <p class="mb-1"><strong>Durata:</strong> <span class="film-duration"></span></p>
+                    </div>
+                    <p class="film-description"></p>
+                </div>
+                <div class="film-actions">
+                    <button class="btn">
+                        <span class="material-icons me-1"></span>
+                        <span></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </template>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="script_map.js"></script>
+</body>
+</html>
+
+
+

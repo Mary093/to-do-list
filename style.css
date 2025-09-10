@@ -97,20 +97,14 @@ body {
 
 
 #markAllViewedBtn,
-<<<<<<< HEAD
 #unmarkAllViewedBtn,
-=======
->>>>>>> 025477673307c2b4a3f607c2f85fc2ec4fe10325
 #removeCompletedBtn,
 #clearSavedBtn {
     background-color: #f3f4fc !important;
 }
 
 #markAllViewedBtn:hover,
-<<<<<<< HEAD
 #unmarkAllViewedBtn:hover,
-=======
->>>>>>> 025477673307c2b4a3f607c2f85fc2ec4fe10325
 #removeCompletedBtn:hover,
 #clearSavedBtn:hover {
     background-color: #f3f4fc !important;

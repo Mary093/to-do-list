@@ -4,6 +4,37 @@ let viewedFilmIds = new Set();
 let currentSearchTerm = '';
 let currentViewedFilter = 'all';
 
+function loadDataFromLocalStorage() {
+    try {
+        const saved = localStorage.getItem('savedFilms');
+        savedFilms = saved ? JSON.parse(saved) : [];
+
+        const viewed = localStorage.getItem('viewedFilmIds');
+        viewedFilmIds = viewed ? new Set(JSON.parse(viewed)) : new Set();
+    } catch (error) {
+        console.error("Errore nel caricamento da localStorage:", error);
+        savedFilms = [];
+        viewedFilmIds = new Set();
+    }
+}
+
+function saveDataToLocalStorage() {
+    try {
+        localStorage.setItem('savedFilms', JSON.stringify(savedFilms));
+        localStorage.setItem('viewedFilmIds', JSON.stringify(Array.from(viewedFilmIds)));
+    } catch (error) {
+        console.error("Errore nel salvataggio su localStorage:", error);
+    }
+}
+
+function debounce(fn, ms) {
+    let t;
+    return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), ms);
+    };
+}
+
 function fetchAndProcessFilms() {
     return new Promise(async (resolve, reject) => {
         try {
@@ -31,7 +62,7 @@ async function addTodosAsFilms() {
 
         todos.forEach(todo => {
             const newFilm = {
-                id: `todo-${todo.id}`, 
+                id: `todo-${todo.id}`,
                 locandina: "https://via.placeholder.com/300x450/6c757d/ffffff?text=Todo+Item",
                 titolo: todo.title,
                 genere: "Todo",
@@ -42,25 +73,40 @@ async function addTodosAsFilms() {
             savedFilms.push(newFilm);
             console.log(`Todo aggiunto: "${newFilm.titolo}"`);
         });
+        saveDataToLocalStorage();
     } catch (error) {
         console.error('Errore durante l\'aggiunta dei todo:', error);
     }
 }
 
 document.addEventListener('DOMContentLoaded', async function () {
-    fetchAndProcessFilms()
-        .then(data => {
-            films = data;
-            addTodosAsFilms();
-            showExploreSection();
-            setupNavigation();
-        })
-        .catch(error => {
-            console.error('Errore nel caricamento iniziale:', error);
-        });
+    loadDataFromLocalStorage();
+
+    const hasTodos = savedFilms.some(film => typeof film.id === 'string' && film.id.startsWith('todo-'));
+    if (savedFilms.length === 0 || !hasTodos) {
+        fetchAndProcessFilms()
+            .then(data => {
+                films = data;
+                addTodosAsFilms();
+                showExploreSection();
+                setupNavigation();
+            })
+            .catch(error => {
+                console.error('Errore nel caricamento iniziale:', error);
+            });
+    } else {
+        fetchAndProcessFilms()
+            .then(data => {
+                films = data;
+                showExploreSection();
+                setupNavigation();
+            })
+            .catch(error => {
+                console.error('Errore nel caricamento iniziale:', error);
+            });
+    }
 });
 
-// Configura navigazione
 function setupNavigation() {
     const exploreLink = document.getElementById('explore-link');
     const myListsLink = document.getElementById('my-lists-link');
@@ -83,7 +129,6 @@ function updateActiveClass(activeLink, inactiveLink) {
     inactiveLink.classList.remove('active');
 }
 
-// Mostra sezione Esplora
 function showExploreSection() {
     const container = document.querySelector('main.container');
     const template = document.getElementById('explore-template');
@@ -97,7 +142,6 @@ function showExploreSection() {
     setupViewedFilter();
 }
 
-// Mostra sezione Le mie liste
 function showMyListsSection() {
     const container = document.querySelector('main.container');
     const template = document.getElementById('my-lists-template');
@@ -113,7 +157,6 @@ function showMyListsSection() {
 
     renderFilms(savedFilms, document.getElementById('savedList'), false);
 
-    // Bottoni bulk
     const markAllBtn = document.getElementById('markAllViewedBtn');
     const unmarkAllBtn = document.getElementById('unmarkAllViewedBtn');
     const removeCompletedBtn = document.getElementById('removeCompletedBtn');
@@ -123,13 +166,11 @@ function showMyListsSection() {
     if (removeCompletedBtn) removeCompletedBtn.addEventListener('click', removeViewedFromSaved);
     if (clearBtn) clearBtn.addEventListener('click', clearSaved);
 
-    // Pulsante aggiungi film
     const addFilmBtn = document.getElementById('addFilmBtn');
     if (addFilmBtn) {
         addFilmBtn.addEventListener('click', addFilmFromInput);
     }
 
-    // Enter su input titolo → click su aggiungi
     const titoloInput = document.getElementById('titolo');
     if (titoloInput && addFilmBtn) {
         titoloInput.addEventListener('keyup', (event) => {
@@ -142,7 +183,6 @@ function showMyListsSection() {
     setupViewedFilter();
 }
 
-// Crea card film
 function createFilmElement(film, showToggle) {
     const template = document.getElementById('film-card-template');
     const card = template.content.cloneNode(true);
@@ -175,7 +215,6 @@ function createFilmElement(film, showToggle) {
         primaryButton.addEventListener('click', () => removeSavedFilm(film.id));
     }
 
-    // Bottone "Segna come visto"
     const viewedButton = document.createElement('button');
     viewedButton.className = 'btn btn-outline-secondary ms-2';
     const viewedIcon = document.createElement('span');
@@ -196,7 +235,6 @@ function createFilmElement(film, showToggle) {
     viewedButton.appendChild(viewedText);
     actionsContainer.appendChild(viewedButton);
 
-    // Bottone "Elimina"
     const deleteButton = document.createElement('button');
     deleteButton.className = 'btn btn-outline-danger ms-2';
     const deleteIcon = document.createElement('span');
@@ -212,7 +250,6 @@ function createFilmElement(film, showToggle) {
     return card;
 }
 
-// Renderizza lista film
 function renderFilms(filmList, container, showToggle) {
     container.innerHTML = '';
 
@@ -233,11 +270,11 @@ function renderFilms(filmList, container, showToggle) {
 
     if (filteredList.length === 0) {
         container.innerHTML = `
-              <div class="alert alert-info">
-                  <h5>Nessun film da mostrare</h5>
-                  <p>${showToggle ? 'Nessun film corrisponde ai criteri correnti.' : 'Modifica i filtri o aggiungi nuovi film.'}</p>
-              </div>
-          `;
+            <div class="alert alert-info">
+                <h5>Nessun film da mostrare</h5>
+                <p>${showToggle ? 'Nessun film corrisponde ai criteri correnti.' : 'Modifica i filtri o aggiungi nuovi film.'}</p>
+            </div>
+        `;
         return;
     }
 
@@ -247,7 +284,6 @@ function renderFilms(filmList, container, showToggle) {
     });
 }
 
-// Aggiungi/rimuovi da salvati
 function toggleSavedFilm(filmId) {
     const film = films.find(f => f.id === filmId);
     if (!film) return;
@@ -262,18 +298,22 @@ function toggleSavedFilm(filmId) {
         console.log(`Film salvato: "${film.titolo}"`);
     }
 
+    saveDataToLocalStorage();
+
     if (document.getElementById("exploreList")) {
         renderFilms(films, document.getElementById('exploreList'), true);
     }
 }
 
-// Segna/rimuovi visto
 function toggleViewed(filmId) {
     if (viewedFilmIds.has(filmId)) {
         viewedFilmIds.delete(filmId);
     } else {
         viewedFilmIds.add(filmId);
     }
+
+    saveDataToLocalStorage();
+
     if (document.getElementById('exploreList')) {
         renderFilms(films, document.getElementById('exploreList'), true);
     }
@@ -282,11 +322,11 @@ function toggleViewed(filmId) {
     }
 }
 
-// Bulk actions
 function markAllAsViewed() {
     for (const film of savedFilms) {
         viewedFilmIds.add(film.id);
     }
+    saveDataToLocalStorage();
     renderAfterBulk();
 }
 
@@ -294,16 +334,20 @@ function unmarkAllViewed() {
     for (const film of savedFilms) {
         viewedFilmIds.delete(film.id);
     }
+    saveDataToLocalStorage();
     renderAfterBulk();
 }
 
 function removeViewedFromSaved() {
     savedFilms = savedFilms.filter(f => !viewedFilmIds.has(f.id));
+    saveDataToLocalStorage();
     renderAfterBulk();
 }
 
 function clearSaved() {
     savedFilms = [];
+    viewedFilmIds = new Set();
+    saveDataToLocalStorage();
     renderAfterBulk();
 }
 
@@ -321,13 +365,14 @@ function renderAfterBulk() {
     }
 }
 
-// Elimina film ovunque
 function deleteFilm(filmId) {
     const initialLength = films.length;
     films = films.filter(f => f.id !== filmId);
 
     savedFilms = savedFilms.filter(saved => saved.id !== filmId);
     viewedFilmIds.delete(filmId);
+
+    saveDataToLocalStorage();
 
     if (document.getElementById('exploreList')) {
         renderFilms(films, document.getElementById('exploreList'), true);
@@ -343,10 +388,10 @@ function deleteFilm(filmId) {
 function removeSavedFilm(filmId) {
     savedFilms = savedFilms.filter(saved => saved.id !== filmId);
     console.log(`Film rimosso.`);
+    saveDataToLocalStorage();
     showMyListsSection();
 }
 
-// Ricerca
 function setupSearch() {
     const searchInput = document.getElementById("searchInput");
     const searchBtn = document.getElementById("searchBtn");
@@ -355,12 +400,9 @@ function setupSearch() {
         searchBtn.addEventListener('click', performSearch);
     }
 
-    if (searchInput && searchBtn) {
-        searchInput.addEventListener('keyup', (event) => {
-            if (event.key === 'Enter') {
-                searchBtn.click();
-            }
-        });
+    if (searchInput) {
+        const debouncedSearch = debounce(performSearch, 300);
+        searchInput.addEventListener('input', debouncedSearch);
     }
 }
 
@@ -374,7 +416,6 @@ function performSearch() {
     }
 }
 
-// Filtri visti
 function setupViewedFilter() {
     const exploreSelect = document.getElementById('viewedFilterExplore');
     const savedSelect = document.getElementById('viewedFilterSaved');
@@ -399,7 +440,6 @@ function setupViewedFilter() {
     }
 }
 
-// Aggiungi nuovo film
 function addFilm(locandina, titolo, genere, anno, durata, descrizione) {
     const newFilm = {
         id: Date.now(),
@@ -411,6 +451,7 @@ function addFilm(locandina, titolo, genere, anno, durata, descrizione) {
         descrizione: descrizione
     };
     savedFilms.push(newFilm);
+    saveDataToLocalStorage();
     console.log(`Film aggiunto: "${titolo}"`);
     showMyListsSection();
 }

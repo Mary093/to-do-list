@@ -1,8 +1,39 @@
-let filmsMap = new Map();
+let films = new Map();
 let savedFilms = new Map();
 let viewedFilmIds = new Set();
 let currentSearchTerm = '';
 let currentViewedFilter = 'all';
+
+function loadDataFromLocalStorage() {
+    try {
+        const saved = localStorage.getItem('savedFilms');
+        savedFilms = saved ? new Map(JSON.parse(saved).map(f => [f.id, f])) : new Map();
+
+        const viewed = localStorage.getItem('viewedFilmIds');
+        viewedFilmIds = viewed ? new Set(JSON.parse(viewed)) : new Set();
+    } catch (error) {
+        console.error("Errore nel caricamento da localStorage:", error);
+        savedFilms = new Map();
+        viewedFilmIds = new Set();
+    }
+}
+
+function saveDataToLocalStorage() {
+    try {
+        localStorage.setItem('savedFilms', JSON.stringify(Array.from(savedFilms.values())));
+        localStorage.setItem('viewedFilmIds', JSON.stringify(Array.from(viewedFilmIds)));
+    } catch (error) {
+        console.error("Errore nel salvataggio su localStorage:", error);
+    }
+}
+
+function debounce(fn, ms) {
+    let t;
+    return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), ms);
+    };
+}
 
 function fetchAndProcessFilms() {
     return new Promise(async (resolve, reject) => {
@@ -11,13 +42,12 @@ function fetchAndProcessFilms() {
             if (!response.ok) {
                 throw new Error('Impossibile caricare lista.json');
             }
-            const data = await response.json();
-            const filmsMap = new Map(data.map(film => [film.id, film]));
+            const filmsData = await response.json();
             console.log('Film caricati con successo.');
-            resolve(filmsMap);
+            resolve(filmsData);
         } catch (error) {
             console.error('Errore nel caricamento dei film:', error);
-            reject(new Map());
+            reject([]);
         }
     });
 }
@@ -43,25 +73,40 @@ async function addTodosAsFilms() {
             savedFilms.set(newFilm.id, newFilm);
             console.log(`Todo aggiunto: "${newFilm.titolo}"`);
         });
+        saveDataToLocalStorage();
     } catch (error) {
         console.error('Errore durante l\'aggiunta dei todo:', error);
     }
 }
 
 document.addEventListener('DOMContentLoaded', async function () {
-    fetchAndProcessFilms()
-        .then(dataMap => {
-            filmsMap = dataMap;
-            addTodosAsFilms();
-            showExploreSection();
-            setupNavigation();
-        })
-        .catch(error => {
-            console.error('Errore nel caricamento iniziale:', error);
-        });
+    loadDataFromLocalStorage();
+
+    const hasTodos = Array.from(savedFilms.values()).some(film => typeof film.id === 'string' && film.id.startsWith('todo-'));
+    if (savedFilms.size === 0 || !hasTodos) {
+        fetchAndProcessFilms()
+            .then(data => {
+                films = new Map(data.map(f => [f.id, f]));
+                addTodosAsFilms();
+                showExploreSection();
+                setupNavigation();
+            })
+            .catch(error => {
+                console.error('Errore nel caricamento iniziale:', error);
+            });
+    } else {
+        fetchAndProcessFilms()
+            .then(data => {
+                films = new Map(data.map(f => [f.id, f]));
+                showExploreSection();
+                setupNavigation();
+            })
+            .catch(error => {
+                console.error('Errore nel caricamento iniziale:', error);
+            });
+    }
 });
 
-// NAVIGAZIONE
 function setupNavigation() {
     const exploreLink = document.getElementById('explore-link');
     const myListsLink = document.getElementById('my-lists-link');
@@ -84,7 +129,6 @@ function updateActiveClass(activeLink, inactiveLink) {
     inactiveLink.classList.remove('active');
 }
 
-// SEZIONE ESPLORA
 function showExploreSection() {
     const container = document.querySelector('main.container');
     const template = document.getElementById('explore-template');
@@ -93,12 +137,11 @@ function showExploreSection() {
     container.innerHTML = '';
     container.appendChild(content);
 
-    renderFilms(Array.from(filmsMap.values()), document.getElementById('exploreList'), true);
+    renderFilms(Array.from(films.values()), document.getElementById('exploreList'), true);
     setupSearch();
     setupViewedFilter();
 }
 
-// SEZIONE LE MIE LISTE
 function showMyListsSection() {
     const container = document.querySelector('main.container');
     const template = document.getElementById('my-lists-template');
@@ -114,7 +157,6 @@ function showMyListsSection() {
 
     renderFilms(Array.from(savedFilms.values()), document.getElementById('savedList'), false);
 
-    // bottoni bulk
     const markAllBtn = document.getElementById('markAllViewedBtn');
     const unmarkAllBtn = document.getElementById('unmarkAllViewedBtn');
     const removeCompletedBtn = document.getElementById('removeCompletedBtn');
@@ -124,13 +166,11 @@ function showMyListsSection() {
     if (removeCompletedBtn) removeCompletedBtn.addEventListener('click', removeViewedFromSaved);
     if (clearBtn) clearBtn.addEventListener('click', clearSaved);
 
-    // pulsante aggiungi film
     const addFilmBtn = document.getElementById('addFilmBtn');
     if (addFilmBtn) {
         addFilmBtn.addEventListener('click', addFilmFromInput);
     }
 
-    // Enter su input titolo → click su aggiungi
     const titoloInput = document.getElementById('titolo');
     if (titoloInput && addFilmBtn) {
         titoloInput.addEventListener('keyup', (event) => {
@@ -143,7 +183,6 @@ function showMyListsSection() {
     setupViewedFilter();
 }
 
-// CREA CARD
 function createFilmElement(film, showToggle) {
     const template = document.getElementById('film-card-template');
     const card = template.content.cloneNode(true);
@@ -156,8 +195,8 @@ function createFilmElement(film, showToggle) {
     card.querySelector('.film-genre').textContent = film.genere;
     card.querySelector('.film-duration').textContent = film.durata;
     card.querySelector('.film-description').textContent = film.descrizione;
-    const titleEl = card.querySelector('.film-title');
 
+    const titleEl = card.querySelector('.film-title');
     const actionsContainer = card.querySelector('.film-actions');
     const primaryButton = card.querySelector('.btn');
     const primarySpanText = card.querySelector('.btn span:last-child');
@@ -176,7 +215,6 @@ function createFilmElement(film, showToggle) {
         primaryButton.addEventListener('click', () => removeSavedFilm(film.id));
     }
 
-    // bottone visto
     const viewedButton = document.createElement('button');
     viewedButton.className = 'btn btn-outline-secondary ms-2';
     const viewedIcon = document.createElement('span');
@@ -197,7 +235,6 @@ function createFilmElement(film, showToggle) {
     viewedButton.appendChild(viewedText);
     actionsContainer.appendChild(viewedButton);
 
-    // bottone elimina
     const deleteButton = document.createElement('button');
     deleteButton.className = 'btn btn-outline-danger ms-2';
     const deleteIcon = document.createElement('span');
@@ -213,7 +250,6 @@ function createFilmElement(film, showToggle) {
     return card;
 }
 
-// RENDER FILM
 function renderFilms(filmList, container, showToggle) {
     container.innerHTML = '';
 
@@ -248,45 +284,49 @@ function renderFilms(filmList, container, showToggle) {
     });
 }
 
-// TOGGLE SAVED
 function toggleSavedFilm(filmId) {
+    const film = films.get(filmId);
+    if (!film) return;
+
     const isAlreadySaved = savedFilms.has(filmId);
 
     if (isAlreadySaved) {
         savedFilms.delete(filmId);
-        console.log(`Film rimosso: "${filmsMap.get(filmId).titolo}"`);
+        console.log(`Film rimosso: "${film.titolo}"`);
     } else {
-        const film = filmsMap.get(filmId);
-        if (!film) return;
         savedFilms.set(filmId, film);
         console.log(`Film salvato: "${film.titolo}"`);
     }
 
+    saveDataToLocalStorage();
+
     if (document.getElementById("exploreList")) {
-        renderFilms(Array.from(filmsMap.values()), document.getElementById('exploreList'), true);
+        renderFilms(Array.from(films.values()), document.getElementById('exploreList'), true);
     }
 }
 
-// TOGGLE VIEWED
 function toggleViewed(filmId) {
     if (viewedFilmIds.has(filmId)) {
         viewedFilmIds.delete(filmId);
     } else {
         viewedFilmIds.add(filmId);
     }
+
+    saveDataToLocalStorage();
+
     if (document.getElementById('exploreList')) {
-        renderFilms(Array.from(filmsMap.values()), document.getElementById('exploreList'), true);
+        renderFilms(Array.from(films.values()), document.getElementById('exploreList'), true);
     }
     if (document.getElementById('savedList')) {
         renderFilms(Array.from(savedFilms.values()), document.getElementById('savedList'), false);
     }
 }
 
-// BULK ACTIONS
 function markAllAsViewed() {
     for (const film of savedFilms.values()) {
         viewedFilmIds.add(film.id);
     }
+    saveDataToLocalStorage();
     renderAfterBulk();
 }
 
@@ -294,26 +334,28 @@ function unmarkAllViewed() {
     for (const film of savedFilms.values()) {
         viewedFilmIds.delete(film.id);
     }
+    saveDataToLocalStorage();
     renderAfterBulk();
 }
 
 function removeViewedFromSaved() {
-    for (const [filmId] of Array.from(savedFilms.entries())) {
-        if (viewedFilmIds.has(filmId)) {
-            savedFilms.delete(filmId);
-        }
+    for (const filmId of viewedFilmIds) {
+        savedFilms.delete(filmId);
     }
+    saveDataToLocalStorage();
     renderAfterBulk();
 }
 
 function clearSaved() {
     savedFilms.clear();
+    viewedFilmIds.clear();
+    saveDataToLocalStorage();
     renderAfterBulk();
 }
 
 function renderAfterBulk() {
     if (document.getElementById('exploreList')) {
-        renderFilms(Array.from(filmsMap.values()), document.getElementById('exploreList'), true);
+        renderFilms(Array.from(films.values()), document.getElementById('exploreList'), true);
     }
     if (document.getElementById('savedList')) {
         renderFilms(Array.from(savedFilms.values()), document.getElementById('savedList'), false);
@@ -325,28 +367,33 @@ function renderAfterBulk() {
     }
 }
 
-// ELIMINAZIONI
 function deleteFilm(filmId) {
-    filmsMap.delete(filmId);
+    const initialLength = films.size;
+    films.delete(filmId);
+
     savedFilms.delete(filmId);
     viewedFilmIds.delete(filmId);
 
+    saveDataToLocalStorage();
+
     if (document.getElementById('exploreList')) {
-        renderFilms(Array.from(filmsMap.values()), document.getElementById('exploreList'), true);
+        renderFilms(Array.from(films.values()), document.getElementById('exploreList'), true);
     }
     if (document.getElementById('savedList')) {
         renderFilms(Array.from(savedFilms.values()), document.getElementById('savedList'), false);
     }
-    console.log('Film eliminato dal catalogo.');
+    if (initialLength !== films.size) {
+        console.log('Film eliminato dal catalogo.');
+    }
 }
 
 function removeSavedFilm(filmId) {
     savedFilms.delete(filmId);
     console.log(`Film rimosso.`);
+    saveDataToLocalStorage();
     showMyListsSection();
 }
 
-// RICERCA
 function setupSearch() {
     const searchInput = document.getElementById("searchInput");
     const searchBtn = document.getElementById("searchBtn");
@@ -355,12 +402,9 @@ function setupSearch() {
         searchBtn.addEventListener('click', performSearch);
     }
 
-    if (searchInput && searchBtn) {
-        searchInput.addEventListener('keyup', (event) => {
-            if (event.key === 'Enter') {
-                searchBtn.click();
-            }
-        });
+    if (searchInput) {
+        const debouncedSearch = debounce(performSearch, 300);
+        searchInput.addEventListener('input', debouncedSearch);
     }
 }
 
@@ -369,21 +413,19 @@ function performSearch() {
     const resultsContainer = document.getElementById("searchResults");
     currentSearchTerm = (searchInput ? searchInput.value.toLowerCase().trim() : '');
     if (resultsContainer) resultsContainer.innerHTML = '';
-
     if (document.getElementById('exploreList')) {
-        renderFilms(Array.from(filmsMap.values()), document.getElementById('exploreList'), true);
+        renderFilms(Array.from(films.values()), document.getElementById('exploreList'), true);
     }
 }
 
-// FILTRO VISTI
 function setupViewedFilter() {
     const exploreSelect = document.getElementById('viewedFilterExplore');
     const savedSelect = document.getElementById('viewedFilterSaved');
 
-    const handler = (value) => {
-        currentViewedFilter = value;
+    const handler = (e) => {
+        currentViewedFilter = e.target.value;
         if (document.getElementById('exploreList')) {
-            renderFilms(Array.from(filmsMap.values()), document.getElementById('exploreList'), true);
+            renderFilms(Array.from(films.values()), document.getElementById('exploreList'), true);
         }
         if (document.getElementById('savedList')) {
             renderFilms(Array.from(savedFilms.values()), document.getElementById('savedList'), false);
@@ -392,54 +434,55 @@ function setupViewedFilter() {
 
     if (exploreSelect) {
         exploreSelect.value = currentViewedFilter;
-        exploreSelect.addEventListener('change', (e) => handler(e.target.value));
+        exploreSelect.addEventListener('change', handler);
     }
+    
     if (savedSelect) {
         savedSelect.value = currentViewedFilter;
-        savedSelect.addEventListener('change', (e) => handler(e.target.value));
+        savedSelect.addEventListener('change', handler);
     }
 }
-
-// AGGIUNTA NUOVO FILM
-function addFilm(locandina, titolo, genere, anno, durata, descrizione) {
-    const newFilmId = Date.now();
-    const newFilm = {
-        id: newFilmId,
-        locandina: locandina,
-        titolo: titolo,
-        genere: genere,
-        anno: anno,
-        durata: durata,
-        descrizione: descrizione
-    };
-    savedFilms.set(newFilmId, newFilm);
-    console.log(`Film aggiunto: "${titolo}"`);
-    showMyListsSection();
-}
-
-function addFilmFromInput() {
-    const titoloInput = document.getElementById("titolo");
-    const genereInput = document.getElementById("genere");
-    const annoInput = document.getElementById("anno");
-    const durataInput = document.getElementById("durata");
-    const descrizioneInput = document.getElementById("descrizione");
-
-    const titolo = titoloInput.value.trim();
-    const genere = genereInput.value.trim() || "Genere Sconosciuto";
-    const anno = annoInput.value.trim() || new Date().getFullYear();
-    const durata = durataInput.value.trim() || "N.D.";
-    const descrizione = descrizioneInput.value.trim() || "Descrizione non disponibile.";
-
-    if (titolo) {
-        addFilm("https://via.placeholder.com/300x450/6c757d/ffffff?text=No+Image", titolo, genere, anno, durata, descrizione);
-
-        titoloInput.value = "";
-        genereInput.value = "";
-        annoInput.value = "";
-        durataInput.value = "";
-        descrizioneInput.value = "";
-        titoloInput.focus();
-    } else {
-        alert("Inserisci almeno il titolo del film!");
+    
+    function addFilm(locandina, titolo, genere, anno, durata, descrizione) {
+        const newFilm = {
+            id: Date.now(),
+            locandina: locandina,
+            titolo: titolo,
+            genere: genere,
+            anno: anno,
+            durata: durata,
+            descrizione: descrizione
+        };
+        savedFilms.set(newFilm.id, newFilm);
+        saveDataToLocalStorage();
+        console.log(`Film aggiunto: "${titolo}"`);
+        showMyListsSection();
     }
-}
+    
+    function addFilmFromInput() {
+        const titoloInput = document.getElementById("titolo");
+        const genereInput = document.getElementById("genere");
+        const annoInput = document.getElementById("anno");
+        const durataInput = document.getElementById("durata");
+        const descrizioneInput = document.getElementById("descrizione");
+    
+        const titolo = titoloInput.value.trim();
+        const genere = genereInput.value.trim() || "Genere Sconosciuto";
+        const anno = annoInput.value.trim() || new Date().getFullYear();
+        const durata = durataInput.value.trim() || "N.D.";
+        const descrizione = descrizioneInput.value.trim() || "Descrizione non disponibile.";
+    
+        if (titolo) {
+            addFilm("https://via.placeholder.com/300x450/6c757d/ffffff?text=No+Image", titolo, genere, anno, durata, descrizione);
+    
+            titoloInput.value = "";
+            genereInput.value = "";
+            annoInput.value = "";
+            durataInput.value = "";
+            descrizioneInput.value = "";
+            titoloInput.focus();
+        } else {
+            alert("Inserisci almeno il titolo del film!");
+        }
+    }
+    

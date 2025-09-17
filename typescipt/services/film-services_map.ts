@@ -1,10 +1,10 @@
 import { FilmModel } from "../models/film.js";
-import type { Film, FilmFilter } from "../interfaccia.js";
+import type { Film, FilmFilter, FilmService } from "../interfaccia.js";
 
 const SAVED_KEY = 'savedFilms';
 const VIEWED_KEY = 'viewedFilmIds';
 
-export class FilmServiceMap {
+export class FilmServiceMap implements FilmService {
     private catalog: Map<number | string, Film> = new Map();
     private savedFilms: Map<number | string, FilmModel> = new Map();
     private viewedFilmIds: Set<number | string> = new Set();

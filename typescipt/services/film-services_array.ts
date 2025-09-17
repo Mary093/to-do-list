@@ -1,11 +1,11 @@
 import { FilmModel } from "../models/film.js";
-import type { Film, FilmFilter } from "../interfaccia.js";
+import type { Film, FilmFilter, FilmService } from "../interfaccia.js";
 
 // chiavi per il salvataggio in localStorage.
 const SAVED_KEY = 'savedFilms';
 const VIEWED_KEY = 'viewedFilmIds';
 
-export class FilmServiceArray {
+export class FilmServiceArray implements FilmService {
     private catalog: Film[] = [];
     private savedFilms: FilmModel[] = [];
     private viewedFilmIds: Set<number | string> = new Set();

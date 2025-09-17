@@ -1,26 +1,28 @@
 import { FilmModel } from './models/film.js';
 import { FilmServiceArray } from './services/film-services_array.js';
 const filmService = new FilmServiceArray();
+//ritarda l'esecuzione di una funzione fino a quando non è trascorso un certo periodo di inattività
 function debounce(fn, ms) {
     let timeout = undefined;
     return (...args) => {
         if (timeout)
-            clearTimeout(timeout);
+            clearTimeout(timeout); //Se esiste timeout lo cancella usando clearTimeout. Questo "resetta" il conto alla rovescia
         timeout = setTimeout(() => fn(...args), ms);
     };
 }
+// Qui avvengono tutte le inizializzazioni
 document.addEventListener('DOMContentLoaded', async function () {
-    filmService.loadAllData();
-    await filmService.fetchAndProcessFilms();
+    filmService.loadAllData(); //carica i dati dell'utente precedentemente salvati nel localStorage
+    await filmService.fetchAndProcessFilms(); //mette in puasa l'esecuzione per scaricare e processare la lista dei film dal file lista.json
     await filmService.addTodosAsFilms();
     showExploreSection();
-    setupNavigation();
+    setupNavigation(); //configurati tutti i gestori di eventi necessari per la navigazione
 });
 function setupNavigation() {
     const exploreLink = document.getElementById('explore-link');
     const myListsLink = document.getElementById('my-lists-link');
     exploreLink?.addEventListener('click', (e) => {
-        e.preventDefault();
+        e.preventDefault(); //metodo che impedisce il comportamento predefinito di un evento.
         showExploreSection();
         updateActiveClass(exploreLink, myListsLink);
     });
@@ -30,6 +32,7 @@ function setupNavigation() {
         updateActiveClass(myListsLink, exploreLink);
     });
 }
+// Aggiorna le classi CSS per mostrare quale link di navigazione è attivo.
 function updateActiveClass(activeLink, inactiveLink) {
     activeLink?.classList.add('active');
     inactiveLink?.classList.remove('active');
@@ -39,8 +42,8 @@ function showExploreSection() {
     const template = document.getElementById('explore-template');
     const content = template.content.cloneNode(true);
     if (container) {
-        container.innerHTML = '';
-        container.appendChild(content);
+        container.innerHTML = ''; // cancella tutto il contenuto HTML attualmente presente all'interno del container
+        container.appendChild(content); //aggiunge un nuovo elemento come ultimo figlio di un elemento genitore esistente nella struttura HTML 
         renderFilms(filmService.getCatalog(), document.getElementById('exploreList'), true);
         setupSearch();
         setupViewedFilter('explore');
@@ -56,12 +59,13 @@ function showMyListsSection() {
         const savedCountSpan = container.querySelector('h4 span');
         if (savedCountSpan)
             savedCountSpan.textContent = filmService.getSavedFilms().length.toString();
-        renderFilms(filmService.getSavedFilms(), document.getElementById('savedList'), false);
+        renderFilms(filmService.getSavedFilms(), document.getElementById('savedList'), false); //false serve a filtrare la lista
         const markAllBtn = document.getElementById('markAllViewedBtn');
         const unmarkAllBtn = document.getElementById('unmarkAllViewedBtn');
         const removeCompletedBtn = document.getElementById('removeCompletedBtn');
         const clearBtn = document.getElementById('clearSavedBtn');
-        markAllBtn?.addEventListener('click', () => { filmService.markAllSavedAsViewed(); renderAfterBulk(); });
+        // Aggiunge i listener per i pulsanti. Ogni click chiama il metodo del servizio e poi aggiorna la UI.
+        markAllBtn?.addEventListener('click', () => { filmService.markAllSavedAsViewed(); renderAfterBulk(); }); //renderAfterBulk= richiama renderExplore() e renderSaved()
         unmarkAllBtn?.addEventListener('click', () => { filmService.unmarkAllSaved(); renderAfterBulk(); });
         removeCompletedBtn?.addEventListener('click', () => { filmService.removeViewedFromSaved(); renderAfterBulk(); });
         clearBtn?.addEventListener('click', () => { filmService.clearSaved(); renderAfterBulk(); });
@@ -91,10 +95,12 @@ function createFilmElement(film, showToggle) {
     durationEl.textContent = film.durata;
     const descriptionEl = card.querySelector('.film-description');
     descriptionEl.textContent = film.descrizione;
+    // Gestione dei pulsanti di azione
     const actionsContainer = card.querySelector('.film-actions');
     const primaryButton = card.querySelector('.btn');
     const primarySpanText = primaryButton.querySelector('span:last-child');
     const primarySpanIcon = primaryButton.querySelector('span:first-child');
+    // Logica per il pulsante "Aggiungi/Rimuovi" che dipende dalla sezione in cui ci troviamo
     if (showToggle) {
         const isSaved = filmService.isFilmSaved(film.id);
         primaryButton.classList.add(isSaved ? 'btn-success' : 'btn-primary');
@@ -114,11 +120,13 @@ function createFilmElement(film, showToggle) {
             showMyListsSection();
         });
     }
+    // Crea e configura il pulsante "Visto/Non visto"
     const viewedButton = document.createElement('button');
     viewedButton.className = 'btn btn-outline-secondary ms-2';
     const viewedIcon = document.createElement('span');
     viewedIcon.className = 'material-icons me-1';
     const viewedText = document.createElement('span');
+    // Aggiorna testo, icona e stile in base allo stato "visto".
     const isViewed = filmService.isFilmViewed(film.id);
     viewedIcon.textContent = isViewed ? 'visibility' : 'visibility_off';
     viewedText.textContent = isViewed ? 'Visto' : 'Non visto';
@@ -127,6 +135,7 @@ function createFilmElement(film, showToggle) {
         viewedButton.classList.add('btn-outline-success');
         titleEl.style.textDecoration = 'line-through';
     }
+    // Aggiunge un listener che cambia lo stato e rirende la sezione corrente
     viewedButton.addEventListener('click', () => {
         filmService.toggleViewed(film.id);
         if (document.getElementById('exploreList'))
@@ -154,6 +163,7 @@ function createFilmElement(film, showToggle) {
     actionsContainer.appendChild(deleteButton);
     return card;
 }
+// Funzione principale che prende una lista di film e li rende nel container specificato
 function renderFilms(filmList, container, showToggle) {
     if (!container)
         return;
@@ -172,33 +182,39 @@ function renderFilms(filmList, container, showToggle) {
         container.appendChild(filmElement);
     });
 }
+// Funzione di utilità per ri-renderizzare la sezione "Esplora"
 function renderExplore() {
     renderFilms(filmService.getCatalog(), document.getElementById('exploreList'), true);
 }
+// Funzione di utilità per ri-renderizzare la sezione "Liste Salvate"
 function renderSaved() {
     const savedCountSpan = document.querySelector('main.container h4 span');
     if (savedCountSpan)
         savedCountSpan.textContent = filmService.getSavedFilms().length.toString();
-    renderFilms(filmService.getSavedFilms(), document.getElementById('savedList'), false);
+    renderFilms(filmService.getSavedFilms(), document.getElementById('savedList'), false); //false per "interruttore" bottone
 }
+// Funzione di utilità per ri-renderizzare entrambe le sezioni dopo un'azione massiva
 function renderAfterBulk() {
     renderExplore();
     renderSaved();
 }
+// Configura i gestori di eventi per la barra di ricerca
 function setupSearch() {
     const searchInput = document.getElementById("searchInput");
     const searchBtn = document.getElementById("searchBtn");
     searchBtn?.addEventListener('click', performSearch);
     if (searchInput) {
-        const debouncedSearch = debounce(performSearch, 300);
+        const debouncedSearch = debounce(performSearch, 300); // Utilizza il debounce per ritardare la ricerca mentre l'utente digita
         searchInput.addEventListener('input', debouncedSearch);
     }
 }
+// Esegue la ricerca, chiedendo al servizio di aggiornare il termine di ricerca e poi renderizza la sezione Esplora
 function performSearch() {
     const searchInput = document.getElementById("searchInput");
     filmService.setSearchTerm(searchInput?.value || '');
     renderExplore();
 }
+// Configura il filtro per i film visti/non visti
 function setupViewedFilter(section) {
     const selectId = section === 'explore' ? 'viewedFilterExplore' : 'viewedFilterSaved';
     const select = document.getElementById(selectId);
@@ -212,9 +228,10 @@ function setupViewedFilter(section) {
     };
     if (select) {
         select.value = filmService.getViewedFilter();
-        select.addEventListener('change', handler);
+        select.addEventListener('change', handler); // si riferisce a un evento e alla funzione che lo gestisce
     }
 }
+// Gestisce l'aggiunta di un nuovo film dalla sezione "Le mie liste".
 function addFilmFromInput() {
     const titoloInput = document.getElementById("titolo");
     const genereInput = document.getElementById("genere");
@@ -235,7 +252,7 @@ function addFilmFromInput() {
         annoInput.value = "";
         durataInput.value = "";
         descrizioneInput.value = "";
-        titoloInput.focus();
+        titoloInput.focus(); //imposta il focus su un elemento di input HTML
     }
     else {
         alert("Inserisci almeno il titolo del film!");
